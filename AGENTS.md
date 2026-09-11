@@ -160,30 +160,143 @@ This is not a literal mathematical impossibility. It is a decision framework:
 
 Do not assume that a larger CPU/RAM package is better for a personal relay. Once the workload has crossed its practical minimum, better routing and stability may be more valuable than unused compute.
 
-### 3.2 Gather procurement requirements before recommending vendors
+### 3.2 Understand the human's actual need before searching vendors
 
-At minimum, resolve:
+**Do not begin by naming VPS providers. Do not search inventory first and fit the user to whatever plans happen to appear.**
+
+The first procurement task is to understand what the human is actually buying the VPS for.
+
+Use information already present in the conversation; do not make the user repeat facts that are already clear. If important details are missing, ask a concise group of questions before vendor research.
+
+At minimum, determine the following categories when they materially affect the decision.
+
+#### A. Where will the user connect from?
 
 ```text
-USER_REGION
-LOCAL_ISP / carrier
-PRIMARY_NETWORK_TYPE   home broadband / campus / mobile / office
-MONTHLY_BUDGET
-PRICE_PRIORITY
-ROUTE_PRIORITY
-CONFIG_PRIORITY
-TARGET_VPS_REGIONS
-PUBLIC_IPV4_REQUIRED
-UDP_REQUIRED
-MIN_MONTHLY_TRAFFIC
-MIN_PORT_BANDWIDTH
-INTENDED_WORKLOAD
-FIRST_PURCHASE_TERM     monthly preferred for untested vendors
+country / region
+province / city when relevant to routing
+local ISP / carrier
+home broadband / campus / mobile / office
+whether multiple networks must work well
 ```
 
-Also ask whether the machine is only a relay or will additionally host databases, websites, containers, builds or other services. That determines how much weight configuration deserves.
+For mainland-China users, knowing only “China” is not enough for route-sensitive selection. Telecom, Unicom and Mobile can behave very differently, and different provinces can also route differently.
 
-### 3.3 For users in mainland China, explain route labels instead of blindly ranking them
+#### B. What is the VPS actually for?
+
+Distinguish at least:
+
+```text
+personal VPN / relay only
+AI / SaaS access
+remote access to personal systems
+general web browsing / video / downloads
+website / database / Docker / self-hosted services
+build / compile / compute workloads
+backup / disaster-recovery node
+multiple users / multiple devices
+```
+
+This determines whether configuration should merely cross a minimum line or receive significant weight.
+
+#### C. What traffic path and protocol does the user need?
+
+Ask only what is relevant, for example:
+
+```text
+HY2 / QUIC -> UDP is required
+REALITY    -> TCP fallback desired or not
+public IPv4 required or NAT acceptable
+IPv6 needed or irrelevant
+WARP / fixed SOCKS5 already available or desired
+VPS Direct egress important or mainly used as an ingress relay
+```
+
+Do not recommend a UDP-dependent design before learning whether the user's network and candidate VPS allow UDP.
+
+#### D. What does “good enough” mean for this user?
+
+Resolve practical thresholds where possible:
+
+```text
+maximum comfortable monthly budget
+minimum monthly traffic
+minimum useful port bandwidth
+minimum acceptable RAM / CPU for the intended workload
+latency sensitivity
+peak-hour stability importance
+refund / short-term trial importance
+preferred or unacceptable regions
+```
+
+Do not invent a `1 TB` traffic requirement for someone who only uses light AI chat, and do not recommend `1C1G` to someone who also wants databases, Docker and builds.
+
+#### E. How should the impossible triangle be weighted?
+
+Ask the user to rank or describe:
+
+```text
+route / stability
+price
+configuration
+```
+
+They do not need to provide percentages. Natural-language priorities are enough, for example:
+
+```text
+“线路第一，价格别超过 $12，配置够跑代理就行”
+“我更在意便宜，只做备用节点”
+“还要跑网站和数据库，所以配置不能太低”
+```
+
+Convert that into explicit weights or ranking only after understanding the intent.
+
+#### F. What purchase-risk tolerance does the user have?
+
+Clarify when relevant:
+
+```text
+monthly only or annual acceptable
+willing to wait for promotions or not
+refundability required / preferred / unimportant
+small provider acceptable or prefers established provider
+needs strong support / console recovery
+```
+
+Never treat a cheap annual deal as attractive without knowing whether the user accepts the lock-in risk.
+
+### 3.3 Minimum clarification set before vendor research
+
+If almost nothing is known, ask a compact set like:
+
+```text
+1. 你主要从哪里、用什么运营商和网络连接？
+2. 这台 VPS 只做个人代理/中转，还是还要跑网站、Docker、数据库等？
+3. 主要用途是什么：AI、日常网页、视频下载、远程访问，还是混合？
+4. 月预算大概多少？第一次是否只接受月付 / 可退款？
+5. 线路、价格、配置三个角，你最在意哪个？哪个只要够用即可？
+6. 是否确定要 HY2 / UDP？是否需要公网 IPv4？
+7. 月流量和候选地区有没有硬要求？
+```
+
+Do not mechanically ask every question if the answer is already known. Do not block on low-impact details that can safely remain unknown.
+
+Before beginning a shortlist, summarize the understood requirement as a small procurement brief, for example:
+
+```text
+Use case: personal HY2 relay, mainly AI
+Local network: Anhui China Telecom home broadband
+Budget: <= $12/month
+Triangle: route > price > config
+Minimum config: 1C1G, public IPv4, UDP required
+Traffic: >= 500 GB/month
+Regions: Tokyo / Osaka first, Seoul acceptable
+Purchase preference: monthly first, refundable preferred
+```
+
+If a missing detail could materially reverse the recommendation, ask before searching. Otherwise state the assumption and proceed.
+
+### 3.4 For users in mainland China, explain route labels instead of blindly ranking them
 
 Use these as **reference labels only**:
 
@@ -213,7 +326,9 @@ usually describe an overseas backbone/transit segment. They are **not the same c
 
 Never tell the user that a label alone proves quality. “CN2”, “9929”, “CMIN2”, “SoftBank”, “IIJ”, “NTT”, “three-network optimized”, “premium network”, “native IP”, and similar phrases are shortlist clues, not evidence.
 
-### 3.4 Search and shortlist like a procurement assistant
+### 3.5 Search and shortlist like a procurement assistant
+
+Only after the user's need is sufficiently understood should current vendor inventory, prices and promotions be researched.
 
 When current vendor inventory, prices or promotions matter, use fresh public information rather than memory.
 
@@ -236,7 +351,7 @@ For each candidate collect:
 
 Prefer a shortlist of roughly 5–10 candidates first, then reduce to 2–3 after hard requirements and route tests.
 
-### 3.5 Treat discounts as a useful price lever, not as proof that a server is worth buying
+### 3.6 Treat discounts as a useful price lever, not as proof that a server is worth buying
 
 Compare **effective long-term monthly cost**, not only the largest promotional number:
 
@@ -273,7 +388,7 @@ then consider annual / long-term discount
 
 Do not encourage the user to lock into a long prepaid term merely because the advertised annual price is low.
 
-### 3.6 Guide the human through route testing before purchase
+### 3.7 Guide the human through route testing before purchase
 
 When a Test IP / Looking Glass exists, instruct the user to test from the network they will actually use.
 
@@ -313,7 +428,7 @@ Do not treat an intermediate traceroute hop that ignores/deprioritizes ICMP as a
 
 Where possible, examine both directions. Internet routing can be asymmetric; a good outbound traceroute from the user's device does not prove the return path is equally good.
 
-### 3.7 HY2 candidates require explicit UDP validation
+### 3.8 HY2 candidates require explicit UDP validation
 
 Do not infer UDP health from TCP/HTTPS success.
 
@@ -328,7 +443,7 @@ If one reaches the VPS and the other does not, investigate path/port-specific ha
 
 QUIC/HY2 does not require UDP 443 specifically. Use the port that is actually reachable and stable for the user's path.
 
-### 3.8 Score candidates according to the user's triangle, then explain the trade-off
+### 3.9 Score candidates according to the user's triangle, then explain the trade-off
 
 For a daily HY2 / AI relay, a reasonable example is:
 
@@ -357,7 +472,7 @@ The procurement goal is **not** “find the biggest plan”. It is:
 
 > **find the best personal optimum among price, configuration and route quality for this user's actual workload and local network.**
 
-### 3.9 Human purchase boundary
+### 3.10 Human purchase boundary
 
 The agent should guide comparison, testing and checkout interpretation, but the human should make the final purchase decision.
 
