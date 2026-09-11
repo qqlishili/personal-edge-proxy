@@ -156,147 +156,271 @@ Treat VPS selection as a balance between:
 
 This is not a literal mathematical impossibility. It is a decision framework:
 
-> **Ask the user which corner matters most, set minimum acceptable thresholds for all three, then search for the best balance inside the budget.**
+> **Understand the user's real need first, then set minimum acceptable thresholds for all three corners and search for the best balance inside the budget.**
 
 Do not assume that a larger CPU/RAM package is better for a personal relay. Once the workload has crossed its practical minimum, better routing and stability may be more valuable than unused compute.
 
-### 3.2 Understand the human's actual need before searching vendors
+### 3.2 Ask high-leverage questions first
 
-**Do not begin by naming VPS providers. Do not search inventory first and fit the user to whatever plans happen to appear.**
-
-The first procurement task is to understand what the human is actually buying the VPS for.
-
-Use information already present in the conversation; do not make the user repeat facts that are already clear. If important details are missing, ask a concise group of questions before vendor research.
-
-At minimum, determine the following categories when they materially affect the decision.
-
-#### A. Where will the user connect from?
+Do **not** start with an open-ended question such as:
 
 ```text
-country / region
-province / city when relevant to routing
-local ISP / carrier
-home broadband / campus / mobile / office
-whether multiple networks must work well
+“你对 VPS 有什么需求？”
 ```
 
-For mainland-China users, knowing only “China” is not enough for route-sensitive selection. Telecom, Unicom and Mobile can behave very differently, and different provinces can also route differently.
+That often produces a useless answer like “要快、要稳、要便宜”.
 
-#### B. What is the VPS actually for?
+Instead, ask about the inputs that actually change the search path. Prefer one variable per question, 2–4 understandable options, and briefly explain why the question matters.
 
-Distinguish at least:
+Do not waste early questions on baseline assumptions that this project can safely infer for a personal HY2 relay. Unless the user says otherwise, the default screening baseline may assume:
 
 ```text
-personal VPN / relay only
-AI / SaaS access
-remote access to personal systems
-general web browsing / video / downloads
-website / database / Docker / self-hosted services
-build / compile / compute workloads
-backup / disaster-recovery node
-multiple users / multiple devices
+Linux VPS
+root / sudo
+public IPv4 preferred
+UDP required for HY2
+reinstall / console recovery preferred
+personal authenticated use, not a public open proxy
 ```
 
-This determines whether configuration should merely cross a minimum line or receive significant weight.
+State these assumptions before vendor research so the user can correct them, but do not make them answer technical questions they do not need to understand.
 
-#### C. What traffic path and protocol does the user need?
+Use information already present in the conversation. Never ask the user to repeat a known ISP, location, budget or use case.
 
-Ask only what is relevant, for example:
+### 3.3 Four-question fast path
+
+If almost nothing is known, start with these four questions. Keep the wording human-facing.
+
+#### 1. Local carrier / ISP — highest leverage for mainland-China routing
+
+Ask:
+
+> **你平时主要用哪家网络连这台 VPS？** 这个会决定我优先看哪一类线路。
+>
+> - 中国电信
+> - 中国联通
+> - 中国移动
+> - 其他 / 境外网络
+
+For a mainland-China user, use the answer as a **shortlisting direction**, not as proof of route quality:
 
 ```text
-HY2 / QUIC -> UDP is required
-REALITY    -> TCP fallback desired or not
-public IPv4 required or NAT acceptable
-IPv6 needed or irrelevant
-WARP / fixed SOCKS5 already available or desired
-VPS Direct egress important or mainly used as an ingress relay
+China Telecom
+  focus first on: CN2 / AS4809
+  if a vendor claims CN2 GIA, verify the actual route and peak-hour behavior
+
+China Unicom
+  focus first on: AS9929 + AS10099 / CUP / China Unicom Premium
+
+China Mobile
+  focus first on: CMIN2 / AS58807
+
+Other / overseas
+  do not force mainland-China route labels; choose based on that network's actual peers and tests
 ```
 
-Do not recommend a UDP-dependent design before learning whether the user's network and candidate VPS allow UDP.
+Do not say “China Telecom = must buy CN2 GIA”. `AS4809` or a CN2 label does not by itself prove full-path GIA quality.
 
-#### D. What does “good enough” mean for this user?
+If province/city is not already known and route-sensitive comparison requires it, ask it as a follow-up. Do not make province/city a mandatory first question for every user.
 
-Resolve practical thresholds where possible:
+#### 2. Main use case — determines the triangle weights
+
+Ask:
+
+> **这台 VPS 主要拿来干什么？** 我会按用途决定“线路 / 价格 / 配置”哪个更重要。
+>
+> - AI / ChatGPT / Claude / Gemini 为主
+> - 日常网页 + 视频 / 流媒体
+> - 游戏 / 对延迟很敏感
+> - 综合都要
+> - 还要跑网站、Docker、数据库或其他服务
+
+Translate the answer internally:
 
 ```text
-maximum comfortable monthly budget
-minimum monthly traffic
-minimum useful port bandwidth
-minimum acceptable RAM / CPU for the intended workload
-latency sensitivity
-peak-hour stability importance
-refund / short-term trial importance
-preferred or unacceptable regions
+AI / chat
+  -> route stability, packet loss, connection success and UDP matter more than oversized CPU/RAM
+
+web + streaming
+  -> sustained throughput + peak-hour stability become more important
+
+gaming / latency-sensitive
+  -> RTT + jitter + packet loss + UDP receive very high weight
+
+mixed use
+  -> balanced route / price / config
+
+hosting additional services
+  -> raise CPU/RAM/disk/config weight before recommending 1C1G
 ```
 
-Do not invent a `1 TB` traffic requirement for someone who only uses light AI chat, and do not recommend `1C1G` to someone who also wants databases, Docker and builds.
+If the user's AI architecture will use WARP or a fixed egress, still prioritize the user's local -> VPS ingress quality; separately verify VPS -> WARP / upstream quality later.
 
-#### E. How should the impossible triangle be weighted?
+#### 3. Budget — use long-term effective price
 
-Ask the user to rank or describe:
+Ask in the user's own currency when possible:
+
+> **你每个月大概愿意花多少钱？** 我会按长期续费价算，不会拿首月促销价冒充长期价格。
+>
+> - 低预算
+> - 中低预算
+> - 中等预算
+> - 预算比较宽松
+> - 或者直接告诉我一个上限
+
+For mainland-China consumer guidance, a simple example range is acceptable if useful:
 
 ```text
-route / stability
-price
-configuration
+<= ¥30
+¥30–60
+¥60–100
+> ¥100
 ```
 
-They do not need to provide percentages. Natural-language priorities are enough, for example:
+Do not treat these ranges as universal. Convert them to the user's currency/context.
+
+Always distinguish:
 
 ```text
-“线路第一，价格别超过 $12，配置够跑代理就行”
-“我更在意便宜，只做备用节点”
-“还要跑网站和数据库，所以配置不能太低”
+first-purchase price
+renewal price
+recurring discount
+one-time coupon
+mandatory IPv4/location/setup/tax fees
 ```
 
-Convert that into explicit weights or ranking only after understanding the intent.
+#### 4. Region preference — optional, never force expertise the user does not have
 
-#### F. What purchase-risk tolerance does the user have?
+Ask:
 
-Clarify when relevant:
+> **机房地区有偏好吗？** 没概念也没关系，我可以按你的运营商和用途来推荐。
+>
+> - 日本
+> - 香港
+> - 韩国 / 新加坡
+> - 美国西海岸
+> - 没概念，按实测和需求推荐
+
+A region preference is not a route-quality proof. If the preferred region tests poorly, explain the trade-off and offer a better-performing alternative.
+
+### 3.4 Ask expectations in human language, then translate them into metrics
+
+Users should **not** be expected to know terms such as P95 jitter, packet-loss thresholds or sustained Mbps requirements.
+
+Ask about the experience they want. Translate that answer into technical acceptance criteria yourself.
+
+Useful conditional follow-ups include:
+
+> **你最不能接受哪种情况？**
+> - 跟 AI 聊着聊着断 / 卡住
+> - 看视频老转圈
+> - 游戏延迟忽高忽低
+> - 下载太慢
+> - 晚高峰偶尔抖一下也能接受，只要便宜
+
+Then map the answer:
 
 ```text
-monthly only or annual acceptable
-willing to wait for promotions or not
-refundability required / preferred / unimportant
-small provider acceptable or prefers established provider
-needs strong support / console recovery
+AI chat continuity
+  -> prioritize connection success, terminal loss, timeout rate, stable latency, UDP if HY2
+
+video / streaming
+  -> prioritize sustained throughput and peak-hour throughput stability
+
+gaming
+  -> prioritize RTT, jitter, terminal loss and UDP
+
+download-heavy
+  -> prioritize sustained throughput, monthly traffic and port limits
+
+price-tolerant of occasional jitter
+  -> allow lower route score if the price advantage is meaningful
 ```
 
-Never treat a cheap annual deal as attractive without knowing whether the user accepts the lock-in risk.
+Another useful question when the user says “快就行” is:
 
-### 3.3 Minimum clarification set before vendor research
+> **你说的“够快”，更接近哪一种？**
+> - AI / 网页顺滑就够
+> - 4K 视频要稳定
+> - 经常大文件下载
+> - 游戏要低延迟
 
-If almost nothing is known, ask a compact set like:
+The purpose is not to force the user to name Mbps. The agent should derive a reasonable throughput/latency target from the scenario and explain the assumption.
+
+### 3.5 Only ask follow-ups that can change the recommendation
+
+After the four-question fast path, ask **at most a few conditional follow-ups**. Do not turn procurement into a questionnaire marathon.
+
+High-value follow-ups include:
+
+#### Willingness to test / tinker
+
+> **你愿意先测几家、买一两台月付试机再退掉不合适的吗？还是更想一次选稳一点、少折腾？**
+
+This changes how aggressively to shortlist small vendors, refundable plans and experimental routes.
+
+#### Price-risk preference
+
+> **你更偏向哪种买法？**
+> - 月付贵一点也行，先稳妥试
+> - 愿意等活动 / 优惠码
+> - 可以年付，但必须确认续费价和退款规则
+
+This controls how much weight to give recurring discounts versus lock-in risk.
+
+#### Availability tolerance
+
+> **晚高峰偶尔抖一下你能接受吗，还是这台必须一直稳？**
+
+If the user requires high availability, consider whether a backup node or optional REALITY entry is justified **after** the primary path is proven healthy.
+
+#### Extra workloads
+
+Only ask detailed CPU/RAM/disk questions when the user plans to run websites, databases, Docker, builds or other services. For a relay-only user, do not make them choose CPU models they do not understand.
+
+### 3.6 Infer the triangle instead of forcing the user to score it
+
+Do not require the user to answer:
 
 ```text
-1. 你主要从哪里、用什么运营商和网络连接？
-2. 这台 VPS 只做个人代理/中转，还是还要跑网站、Docker、数据库等？
-3. 主要用途是什么：AI、日常网页、视频下载、远程访问，还是混合？
-4. 月预算大概多少？第一次是否只接受月付 / 可退款？
-5. 线路、价格、配置三个角，你最在意哪个？哪个只要够用即可？
-6. 是否确定要 HY2 / UDP？是否需要公网 IPv4？
-7. 月流量和候选地区有没有硬要求？
+“线路、价格、配置分别权重多少？”
 ```
 
-Do not mechanically ask every question if the answer is already known. Do not block on low-impact details that can safely remain unknown.
+Most users cannot meaningfully assign percentages before they understand VPS networking.
 
-Before beginning a shortlist, summarize the understood requirement as a small procurement brief, for example:
+Infer an initial triangle from the four core answers and the optional expectation follow-up, then show it back in plain language for correction.
+
+Example:
+
+```text
+我先按这个方向筛：
+线路 > 价格 > 配置。
+原因：你主要用 AI，预算 ¥60/月，机器只做个人中转，所以配置先跨过 1C1G 的够用线，把更多预算留给线路。
+如果这个取舍不对，你告诉我，我再改。
+```
+
+This is preferable to asking a novice to invent percentages.
+
+### 3.7 Produce a short procurement brief before searching vendors
+
+Before naming providers, summarize what was learned in a compact brief. Keep it readable to both the human and another AI.
+
+Example:
 
 ```text
 Use case: personal HY2 relay, mainly AI
-Local network: Anhui China Telecom home broadband
-Budget: <= $12/month
+Local network: China Telecom home broadband
+Budget: <= ¥60/month, compare by renewal price
 Triangle: route > price > config
-Minimum config: 1C1G, public IPv4, UDP required
-Traffic: >= 500 GB/month
+Baseline: Linux, root, public IPv4, UDP, 1C1G enough unless tests show otherwise
+Experience target: AI chat should remain stable; occasional small throughput variation is acceptable
 Regions: Tokyo / Osaka first, Seoul acceptable
-Purchase preference: monthly first, refundable preferred
+Purchase preference: monthly first, refundable preferred, recurring discounts welcome
 ```
 
 If a missing detail could materially reverse the recommendation, ask before searching. Otherwise state the assumption and proceed.
 
-### 3.4 For users in mainland China, explain route labels instead of blindly ranking them
+### 3.8 For users in mainland China, explain route labels instead of blindly ranking them
 
 Use these as **reference labels only**:
 
@@ -326,7 +450,7 @@ usually describe an overseas backbone/transit segment. They are **not the same c
 
 Never tell the user that a label alone proves quality. “CN2”, “9929”, “CMIN2”, “SoftBank”, “IIJ”, “NTT”, “three-network optimized”, “premium network”, “native IP”, and similar phrases are shortlist clues, not evidence.
 
-### 3.5 Search and shortlist like a procurement assistant
+### 3.9 Search and shortlist like a procurement assistant
 
 Only after the user's need is sufficiently understood should current vendor inventory, prices and promotions be researched.
 
@@ -351,7 +475,7 @@ For each candidate collect:
 
 Prefer a shortlist of roughly 5–10 candidates first, then reduce to 2–3 after hard requirements and route tests.
 
-### 3.6 Treat discounts as a useful price lever, not as proof that a server is worth buying
+### 3.10 Treat discounts as a useful price lever, not as proof that a server is worth buying
 
 Compare **effective long-term monthly cost**, not only the largest promotional number:
 
@@ -388,7 +512,7 @@ then consider annual / long-term discount
 
 Do not encourage the user to lock into a long prepaid term merely because the advertised annual price is low.
 
-### 3.7 Guide the human through route testing before purchase
+### 3.11 Guide the human through route testing before purchase
 
 When a Test IP / Looking Glass exists, instruct the user to test from the network they will actually use.
 
@@ -428,7 +552,7 @@ Do not treat an intermediate traceroute hop that ignores/deprioritizes ICMP as a
 
 Where possible, examine both directions. Internet routing can be asymmetric; a good outbound traceroute from the user's device does not prove the return path is equally good.
 
-### 3.8 HY2 candidates require explicit UDP validation
+### 3.12 HY2 candidates require explicit UDP validation
 
 Do not infer UDP health from TCP/HTTPS success.
 
@@ -443,7 +567,7 @@ If one reaches the VPS and the other does not, investigate path/port-specific ha
 
 QUIC/HY2 does not require UDP 443 specifically. Use the port that is actually reachable and stable for the user's path.
 
-### 3.9 Score candidates according to the user's triangle, then explain the trade-off
+### 3.13 Score candidates according to the user's triangle, then explain the trade-off
 
 For a daily HY2 / AI relay, a reasonable example is:
 
@@ -472,7 +596,7 @@ The procurement goal is **not** “find the biggest plan”. It is:
 
 > **find the best personal optimum among price, configuration and route quality for this user's actual workload and local network.**
 
-### 3.10 Human purchase boundary
+### 3.14 Human purchase boundary
 
 The agent should guide comparison, testing and checkout interpretation, but the human should make the final purchase decision.
 
