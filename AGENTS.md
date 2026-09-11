@@ -410,12 +410,14 @@ examples/xray-server.example.jsonc     server-side Xray schema example
 examples/v2rayn-hysteria2.example.md   audited v2rayN / sing-box HY2 client example
 examples/v2rayn-reality-vision.example.md
                                        v2rayN / Xray REALITY client example
+docs/vps-selection.md                  pre-deployment VPS screening, route and UDP testing guide
 docs/warp-outbound.md                  WARP egress behavior and validation
 docs/static-socks.md                   fixed SOCKS5 egress behavior
 ```
 
 Synchronization rules:
 
+- VPS selection/testing guidance change -> VPS selection doc + relevant README entry points + AGENTS if deployer assumptions change.
 - Xray schema change -> server example + README references + affected docs + AGENTS.
 - HY2 client field change -> HY2 client example + relevant README notes.
 - REALITY client field change -> REALITY example + relevant README notes.
@@ -509,6 +511,8 @@ Preserve SSH access before firewall changes. Remember provider-side security gro
 ## 14. Testing philosophy
 
 Change one variable at a time.
+
+Before buying a VPS, follow [`docs/vps-selection.md`](./docs/vps-selection.md): do not infer route quality, UDP health or peak-hour performance from marketing specs alone.
 
 Prefer checking:
 
