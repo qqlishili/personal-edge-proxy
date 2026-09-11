@@ -1,6 +1,6 @@
 # AGENTS.md — AI maintainer / deployer guide
 
-Read this file before editing or deploying the repository.
+Read this file before editing, procuring, or deploying this repository.
 
 ## 1. Core model
 
@@ -30,6 +30,41 @@ fixed SOCKS5     optional stable egress for selected services
 block            explicit deny / fail-closed
 ```
 
+### 1.1 Execution principle — minimize human manual work
+
+The project should require as little manual work from the human as reasonably possible.
+
+Use this order of preference:
+
+```text
+AI can safely do it with available tools
+        -> AI does it
+
+AI cannot do it, but can inspect/interpret the result
+        -> give the human the smallest necessary action
+        -> human runs/clicks it
+        -> AI interprets the result and decides the next step
+
+Action inherently requires the human
+(payment / MFA / CAPTCHA / provider acceptance / physical-local-network action)
+        -> explain exactly what the human must do and why
+        -> continue immediately after the result is available
+```
+
+Rules:
+
+1. **Do not make the human copy and run commands that the agent can already execute itself.**
+2. If local shell, SSH, browser, connector, or other authorized tools are available, use them directly when the action is safe and within the user's request.
+3. Do not ask the human to manually read traceroute, ping, logs, JSON, or configuration output if the agent can read and interpret it.
+4. If a test must originate from the human's real home/campus/mobile network and the agent cannot run there, give a short copy-paste command and ask for the raw output; the agent should do the analysis.
+5. Keep manual steps small and sequential. Do not dump twenty commands on a beginner and ask them to diagnose the result themselves.
+6. Never ask the human to paste SSH private keys, payment-card details, root passwords, provider passwords, or other secrets into chat or the repository.
+7. Use existing authenticated/local access paths where possible: local `ssh`, SSH Agent, `~/.ssh/config`, provider console already opened by the user, or connected tools.
+8. When the only available environment is a normal chat interface with no shell/browser access to the user's machine, **act as the operator's guide**: tell the human exactly what to run/click, what output to send back, and then continue the reasoning yourself.
+9. State capability boundaries plainly. Do not pretend a command was run when it was only suggested.
+
+The human should make decisions that genuinely require judgment or consent; the AI should absorb routine execution and technical interpretation.
+
 ---
 
 ## 2. Deployment profiles — recommended interpretation
@@ -44,7 +79,7 @@ Client -> HY2 -> VPS -> Direct
 
 Use when the user only wants a simple working personal node.
 
-Trade-off: AI services see the VPS data-center egress directly. On low-reputation or heavily reused data-center ranges, users may encounter more availability challenges, CAPTCHAs, regional mismatches, or account-security checks.
+Trade-off: AI services see the VPS data-center egress directly. Depending on region, IP reputation, and provider history, users may encounter availability challenges, CAPTCHAs, regional mismatches, or account-security checks.
 
 Do **not** claim that this guarantees account suspension or that data-center IPs are universally unusable.
 
@@ -88,13 +123,6 @@ HY2 -> VPS
 
 This is the repository maintainer's **preferred practical profile** when the user primarily uses AI services and also wants a deliberately stable Claude/Anthropic egress.
 
-Reasons:
-
-- HY2 keeps the client side simple and fast when UDP is healthy.
-- WARP decouples selected AI traffic from the VPS's raw data-center IP.
-- A fixed SOCKS5 can keep selected services on a stable final egress when the user explicitly wants that property.
-- Direct remains available for normal traffic and as a clean network baseline.
-
 Do not claim:
 
 - that WARP is residential;
@@ -102,7 +130,7 @@ Do not claim:
 - that this profile guarantees avoiding bans or risk checks;
 - that any service must use these exact routes.
 
-### Profile E — extra inbound resilience / icing on the cake
+### Profile E — extra inbound resilience
 
 Start from Profile D, then optionally add:
 
@@ -128,7 +156,7 @@ Do not overbuild simply because example files exist.
 
 ---
 
-## 3. VPS procurement guidance — guide the human before deployment
+## 3. VPS procurement guidance — understand first, search second
 
 If the user has **not bought a VPS yet**, do not jump directly to installation commands.
 
@@ -138,7 +166,7 @@ First read and follow:
 
 The agent's job is to help the human make a procurement decision, not merely repeat VPS marketing specs.
 
-### 3.1 Use the project's “impossible triangle” as the selection model
+### 3.1 Use the project's “impossible triangle”
 
 Treat VPS selection as a balance between:
 
@@ -156,23 +184,37 @@ Treat VPS selection as a balance between:
 
 This is not a literal mathematical impossibility. It is a decision framework:
 
-> **Understand the user's real need first, then set minimum acceptable thresholds for all three corners and search for the best balance inside the budget.**
+> **Understand the user's real need first, set minimum acceptable thresholds for all three corners, then find the best balance inside the budget.**
 
-Do not assume that a larger CPU/RAM package is better for a personal relay. Once the workload has crossed its practical minimum, better routing and stability may be more valuable than unused compute.
+For the repository's default **daily HY2 / AI relay** scenario, use this unified top-level weighting:
+
+```text
+route / stability  50%
+price              30%
+configuration      20%
+```
+
+This must stay synchronized with `docs/vps-selection.md` Section 5 and its sub-score tables.
+
+AUP, UDP permission, public-address requirements, provider recovery capability, and other essential constraints are **hard eligibility gates**, not a fourth weighted corner. A candidate that fails a hard requirement is removed before scoring.
+
+Do not assume that a larger CPU/RAM package is better for a personal relay. Once the workload crosses its practical minimum, better routing and stability may be more valuable than unused compute.
 
 ### 3.2 Ask high-leverage questions first
 
-Do **not** start with an open-ended question such as:
+Do **not** start with:
 
 ```text
 “你对 VPS 有什么需求？”
 ```
 
-That often produces a useless answer like “要快、要稳、要便宜”.
+That often produces “要快、要稳、要便宜”, which does not define a trade-off.
 
-Instead, ask about the inputs that actually change the search path. Prefer one variable per question, 2–4 understandable options, and briefly explain why the question matters.
+Prefer one variable per question, 2–4 understandable choices, and briefly explain why it matters.
 
-Do not waste early questions on baseline assumptions that this project can safely infer for a personal HY2 relay. Unless the user says otherwise, the default screening baseline may assume:
+Use information already present in the conversation. Never ask the user to repeat a known ISP, location, budget, or use case.
+
+For a normal personal HY2 relay, baseline technical assumptions can usually be inferred and then stated for confirmation rather than consuming early questions:
 
 ```text
 Linux VPS
@@ -183,17 +225,11 @@ reinstall / console recovery preferred
 personal authenticated use, not a public open proxy
 ```
 
-State these assumptions before vendor research so the user can correct them, but do not make them answer technical questions they do not need to understand.
-
-Use information already present in the conversation. Never ask the user to repeat a known ISP, location, budget or use case.
-
 ### 3.3 Four-question fast path
 
-If almost nothing is known, start with these four questions. Keep the wording human-facing.
+If almost nothing is known, begin with these four human-facing questions.
 
 #### 1. Local carrier / ISP — highest leverage for mainland-China routing
-
-Ask:
 
 > **你平时主要用哪家网络连这台 VPS？** 这个会决定我优先看哪一类线路。
 >
@@ -202,32 +238,30 @@ Ask:
 > - 中国移动
 > - 其他 / 境外网络
 
-For a mainland-China user, use the answer as a **shortlisting direction**, not as proof of route quality:
+Use the answer only as a **shortlisting direction**:
 
 ```text
 China Telecom
-  focus first on: CN2 / AS4809
-  if a vendor claims CN2 GIA, verify the actual route and peak-hour behavior
+  focus first on CN2 / AS4809
+  if a vendor claims CN2 GIA, verify the real route and peak-hour behavior
 
 China Unicom
-  focus first on: AS9929 + AS10099 / CUP / China Unicom Premium
+  focus first on AS9929 + AS10099 / CUP / China Unicom Premium
 
 China Mobile
-  focus first on: CMIN2 / AS58807
+  focus first on CMIN2 / AS58807
 
 Other / overseas
-  do not force mainland-China route labels; choose based on that network's actual peers and tests
+  choose according to that network's actual peering and tests
 ```
 
-Do not say “China Telecom = must buy CN2 GIA”. `AS4809` or a CN2 label does not by itself prove full-path GIA quality.
+Do not say “China Telecom = must buy CN2 GIA”. A route label is not a performance guarantee.
 
-If province/city is not already known and route-sensitive comparison requires it, ask it as a follow-up. Do not make province/city a mandatory first question for every user.
+If province/city is not already known and would materially change route evaluation, ask it as a follow-up rather than making it a universal first question.
 
 #### 2. Main use case — determines the triangle weights
 
-Ask:
-
-> **这台 VPS 主要拿来干什么？** 我会按用途决定“线路 / 价格 / 配置”哪个更重要。
+> **这台 VPS 主要拿来干什么？** 我会按用途决定线路、价格、配置哪个更重要。
 >
 > - AI / ChatGPT / Claude / Gemini 为主
 > - 日常网页 + 视频 / 流媒体
@@ -235,40 +269,30 @@ Ask:
 > - 综合都要
 > - 还要跑网站、Docker、数据库或其他服务
 
-Translate the answer internally:
+Translate internally:
 
 ```text
 AI / chat
-  -> route stability, packet loss, connection success and UDP matter more than oversized CPU/RAM
+  -> route stability, loss, connection success, UDP > oversized CPU/RAM
 
 web + streaming
-  -> sustained throughput + peak-hour stability become more important
+  -> sustained throughput + peak-hour stability
 
 gaming / latency-sensitive
-  -> RTT + jitter + packet loss + UDP receive very high weight
+  -> RTT + jitter + loss + UDP receive very high weight
 
 mixed use
-  -> balanced route / price / config
+  -> balanced triangle
 
 hosting additional services
-  -> raise CPU/RAM/disk/config weight before recommending 1C1G
+  -> raise CPU/RAM/disk requirements
 ```
-
-If the user's AI architecture will use WARP or a fixed egress, still prioritize the user's local -> VPS ingress quality; separately verify VPS -> WARP / upstream quality later.
 
 #### 3. Budget — use long-term effective price
 
-Ask in the user's own currency when possible:
+> **你每个月大概愿意花多少钱？** 我会按长期续费价算，不拿首月促销价冒充长期价格。
 
-> **你每个月大概愿意花多少钱？** 我会按长期续费价算，不会拿首月促销价冒充长期价格。
->
-> - 低预算
-> - 中低预算
-> - 中等预算
-> - 预算比较宽松
-> - 或者直接告诉我一个上限
-
-For mainland-China consumer guidance, a simple example range is acceptable if useful:
+Use the user's currency. For a mainland-China consumer, a simple optional range is:
 
 ```text
 <= ¥30
@@ -277,152 +301,66 @@ For mainland-China consumer guidance, a simple example range is acceptable if us
 > ¥100
 ```
 
-Do not treat these ranges as universal. Convert them to the user's currency/context.
+Always distinguish first-purchase price, renewal price, recurring discount, one-time coupon, and mandatory IPv4/location/setup/tax fees.
 
-Always distinguish:
+#### 4. Region preference — optional
 
-```text
-first-purchase price
-renewal price
-recurring discount
-one-time coupon
-mandatory IPv4/location/setup/tax fees
-```
-
-#### 4. Region preference — optional, never force expertise the user does not have
-
-Ask:
-
-> **机房地区有偏好吗？** 没概念也没关系，我可以按你的运营商和用途来推荐。
+> **机房地区有偏好吗？** 没概念也没关系，我可以按你的运营商和用途推荐。
 >
 > - 日本
 > - 香港
 > - 韩国 / 新加坡
-> - 美国西海岸
-> - 没概念，按实测和需求推荐
+> - 没概念，听你推荐
 
-A region preference is not a route-quality proof. If the preferred region tests poorly, explain the trade-off and offer a better-performing alternative.
+Do not force a beginner to choose a region they do not understand.
 
 ### 3.4 Ask expectations in human language, then translate them into metrics
 
-Users should **not** be expected to know terms such as P95 jitter, packet-loss thresholds or sustained Mbps requirements.
+Users should not need to know `P95 jitter`, `MTR`, or target Mbps before asking for help.
 
-Ask about the experience they want. Translate that answer into technical acceptance criteria yourself.
-
-Useful conditional follow-ups include:
-
-> **你最不能接受哪种情况？**
-> - 跟 AI 聊着聊着断 / 卡住
-> - 看视频老转圈
-> - 游戏延迟忽高忽低
-> - 下载太慢
-> - 晚高峰偶尔抖一下也能接受，只要便宜
-
-Then map the answer:
+Ask about experience, for example:
 
 ```text
-AI chat continuity
-  -> prioritize connection success, terminal loss, timeout rate, stable latency, UDP if HY2
-
-video / streaming
-  -> prioritize sustained throughput and peak-hour throughput stability
-
-gaming
-  -> prioritize RTT, jitter, terminal loss and UDP
-
-download-heavy
-  -> prioritize sustained throughput, monthly traffic and port limits
-
-price-tolerant of occasional jitter
-  -> allow lower route score if the price advantage is meaningful
+你最不能接受哪种情况？
+- AI 聊着聊着断掉 / 请求经常失败
+- 视频老转圈
+- 游戏延迟乱跳
+- 下载太慢
+- 偶尔晚高峰抖一下可以接受
 ```
 
-Another useful question when the user says “快就行” is:
+Useful follow-ups only when they can change the recommendation:
 
-> **你说的“够快”，更接近哪一种？**
-> - AI / 网页顺滑就够
-> - 4K 视频要稳定
-> - 经常大文件下载
-> - 游戏要低延迟
+- **Latency sensitivity:** 游戏 / 语音 / 视频会议，还是纯网页和 AI？
+- **Good-enough throughput:** 需要稳定看 4K，还是 AI 对话和普通网页顺畅就够？
+- **Testing tolerance:** 愿意测试两三台挑一台，还是想尽量一次选稳？
+- **Price-risk preference:** 愿意等促销 / 年付换低价，还是宁可月付贵一点？
+- **Availability tolerance:** 偶尔晚高峰抖一下能接受，还是主节点必须很稳？
 
-The purpose is not to force the user to name Mbps. The agent should derive a reasonable throughput/latency target from the scenario and explain the assumption.
+The agent translates those answers into route weights and test thresholds. Do not ask the human to invent engineering thresholds they do not understand.
 
-### 3.5 Only ask follow-ups that can change the recommendation
+### 3.5 Build a procurement brief before vendor research
 
-After the four-question fast path, ask **at most a few conditional follow-ups**. Do not turn procurement into a questionnaire marathon.
-
-High-value follow-ups include:
-
-#### Willingness to test / tinker
-
-> **你愿意先测几家、买一两台月付试机再退掉不合适的吗？还是更想一次选稳一点、少折腾？**
-
-This changes how aggressively to shortlist small vendors, refundable plans and experimental routes.
-
-#### Price-risk preference
-
-> **你更偏向哪种买法？**
-> - 月付贵一点也行，先稳妥试
-> - 愿意等活动 / 优惠码
-> - 可以年付，但必须确认续费价和退款规则
-
-This controls how much weight to give recurring discounts versus lock-in risk.
-
-#### Availability tolerance
-
-> **晚高峰偶尔抖一下你能接受吗，还是这台必须一直稳？**
-
-If the user requires high availability, consider whether a backup node or optional REALITY entry is justified **after** the primary path is proven healthy.
-
-#### Extra workloads
-
-Only ask detailed CPU/RAM/disk questions when the user plans to run websites, databases, Docker, builds or other services. For a relay-only user, do not make them choose CPU models they do not understand.
-
-### 3.6 Infer the triangle instead of forcing the user to score it
-
-Do not require the user to answer:
-
-```text
-“线路、价格、配置分别权重多少？”
-```
-
-Most users cannot meaningfully assign percentages before they understand VPS networking.
-
-Infer an initial triangle from the four core answers and the optional expectation follow-up, then show it back in plain language for correction.
-
-Example:
-
-```text
-我先按这个方向筛：
-线路 > 价格 > 配置。
-原因：你主要用 AI，预算 ¥60/月，机器只做个人中转，所以配置先跨过 1C1G 的够用线，把更多预算留给线路。
-如果这个取舍不对，你告诉我，我再改。
-```
-
-This is preferable to asking a novice to invent percentages.
-
-### 3.7 Produce a short procurement brief before searching vendors
-
-Before naming providers, summarize what was learned in a compact brief. Keep it readable to both the human and another AI.
-
-Example:
+Before searching vendors, summarize the requirement in a small brief, for example:
 
 ```text
 Use case: personal HY2 relay, mainly AI
 Local network: China Telecom home broadband
-Budget: <= ¥60/month, compare by renewal price
+Budget: <= ¥80/month
 Triangle: route > price > config
-Baseline: Linux, root, public IPv4, UDP, 1C1G enough unless tests show otherwise
-Experience target: AI chat should remain stable; occasional small throughput variation is acceptable
-Regions: Tokyo / Osaka first, Seoul acceptable
-Purchase preference: monthly first, refundable preferred, recurring discounts welcome
+Default score: route 50 / price 30 / config 20
+Minimum config: 1C1G, public IPv4, UDP required
+Traffic: >= 500 GB/month
+Regions: Tokyo first, Seoul acceptable
+Purchase preference: monthly first, refundable preferred
+Experience goal: stable AI sessions; occasional small latency variation is acceptable
 ```
 
 If a missing detail could materially reverse the recommendation, ask before searching. Otherwise state the assumption and proceed.
 
-### 3.8 For users in mainland China, explain route labels instead of blindly ranking them
+### 3.6 Explain route labels instead of blindly ranking them
 
-Use these as **reference labels only**:
+For mainland-China users, use these as **reference labels only**:
 
 ```text
 China Telecom
@@ -438,7 +376,7 @@ China Mobile
   higher-quality candidate: CMIN2 / AS58807
 ```
 
-For Japan and other overseas segments, names such as:
+For Japan and other overseas segments:
 
 ```text
 SoftBank / AS17676
@@ -446,15 +384,15 @@ IIJ / AS2497
 NTT / AS2914
 ```
 
-usually describe an overseas backbone/transit segment. They are **not the same category** as CN2 / 9929 / CMIN2. A single end-to-end path may contain both.
+These usually describe an overseas backbone/transit segment. They are **not the same category** as CN2 / 9929 / CMIN2. One end-to-end path may contain both.
 
 Never tell the user that a label alone proves quality. “CN2”, “9929”, “CMIN2”, “SoftBank”, “IIJ”, “NTT”, “three-network optimized”, “premium network”, “native IP”, and similar phrases are shortlist clues, not evidence.
 
-### 3.9 Search and shortlist like a procurement assistant
+### 3.7 Search and shortlist like a procurement assistant
 
-Only after the user's need is sufficiently understood should current vendor inventory, prices and promotions be researched.
+Only after the user's need is sufficiently understood should current vendor inventory, prices, and promotions be researched.
 
-When current vendor inventory, prices or promotions matter, use fresh public information rather than memory.
+Use fresh public information rather than memory when current inventory/pricing matters.
 
 For each candidate collect:
 
@@ -462,22 +400,22 @@ For each candidate collect:
 2. datacenter city / region;
 3. actual checkout price;
 4. renewal price;
-5. IPv4, location, setup, tax and other mandatory fees;
+5. IPv4, location, setup, tax, and mandatory fees;
 6. CPU / RAM / disk;
 7. port bandwidth and monthly traffic;
 8. public IPv4 / NAT status;
 9. UDP policy;
-10. AUP / ToS compatibility with the user's intended personal use;
-11. test IP / Looking Glass;
+10. AUP / ToS compatibility with the intended personal use;
+11. Test IP / Looking Glass;
 12. reinstall / console / recovery capabilities;
 13. refund / cancellation / IP replacement rules;
 14. current discount type and whether it recurs.
 
-Prefer a shortlist of roughly 5–10 candidates first, then reduce to 2–3 after hard requirements and route tests.
+Prefer a shortlist of roughly 5–10 candidates, then reduce to 2–3 after hard requirements and route tests.
 
-### 3.10 Treat discounts as a useful price lever, not as proof that a server is worth buying
+### 3.8 Price and refund policy
 
-Compare **effective long-term monthly cost**, not only the largest promotional number:
+Compare **effective long-term monthly cost**, not the largest promotional number:
 
 ```text
 plan
@@ -498,25 +436,29 @@ Explicitly distinguish:
 - anniversary / seasonal / Black Friday-style promotion;
 - normal renewal price.
 
-A good recurring discount can improve the price corner of the triangle without sacrificing route/configuration.
+The key question is:
 
-However, for an untested provider or route:
+> **Does renewal keep the discount, or return to normal price?**
+
+For an untested provider or route:
 
 ```text
-monthly test first
+monthly / short-term test first
       ↓
-validate route + instance
+validate route + real instance
       ↓
 then consider annual / long-term discount
 ```
 
-Do not encourage the user to lock into a long prepaid term merely because the advertised annual price is low.
+Prefer a clearly refundable option when otherwise comparable. Read the current refund rules and exclusions; promotional plans, setup fees, IP fees, add-ons, or heavy traffic usage may be excluded.
 
-### 3.11 Guide the human through route testing before purchase
+### 3.9 Guide route testing; execute it yourself when possible
 
-When a Test IP / Looking Glass exists, instruct the user to test from the network they will actually use.
+When a Test IP / Looking Glass exists, test from the network that will actually use the VPS.
 
-Typical Windows checks:
+If the AI has shell access on that local machine, **run the checks itself**. If it is chat-only and cannot originate traffic from the user's network, give the human the commands and ask for raw output.
+
+Windows:
 
 ```powershell
 ping TEST_IP -n 50
@@ -524,19 +466,14 @@ tracert -d TEST_IP
 pathping TEST_IP
 ```
 
-Typical Linux/macOS checks:
+Linux/macOS:
 
 ```bash
 ping -c 50 TEST_IP
 mtr -rwzbc 50 TEST_IP
 ```
 
-At minimum compare:
-
-```text
-daytime
-20:00–23:00 local peak hours
-```
+At minimum compare daytime and local peak hours such as `20:00–23:00`.
 
 Evaluate:
 
@@ -546,99 +483,93 @@ Evaluate:
 - route changes;
 - repeated timeouts;
 - sustained throughput;
-- the user's own ISP specifically.
+- the user's real ISP/network.
 
 Do not treat an intermediate traceroute hop that ignores/deprioritizes ICMP as automatic end-to-end loss.
 
-Where possible, examine both directions. Internet routing can be asymmetric; a good outbound traceroute from the user's device does not prove the return path is equally good.
+Where possible inspect both directions because Internet routing can be asymmetric.
 
-### 3.12 HY2 candidates require explicit UDP validation
+For HY2, do not infer UDP health from TCP/HTTPS success. On a purchased test instance validate the intended UDP port and, when useful, compare `UDP 443` with a high port such as `UDP 24443`.
 
-Do not infer UDP health from TCP/HTTPS success.
+### 3.10 Unified candidate scoring
 
-For a purchased test instance, validate the actual intended UDP port. If useful, compare common and high ports, for example:
-
-```text
-UDP 443
-UDP 24443
-```
-
-If one reaches the VPS and the other does not, investigate path/port-specific handling before blaming HY2 itself.
-
-QUIC/HY2 does not require UDP 443 specifically. Use the port that is actually reachable and stable for the user's path.
-
-### 3.13 Score candidates according to the user's triangle, then explain the trade-off
-
-For a daily HY2 / AI relay, a reasonable example is:
+For the default **daily HY2 / AI relay**, use exactly:
 
 ```text
 route / stability  50%
-price              25%
-configuration      15%
-operations / AUP   10%
+price              30%
+configuration      20%
 ```
 
-For a combined application/database server, configuration may deserve equal weight with routing. For a backup node, price may deserve more weight.
+Do not add a separate `operations/AUP` percentage for this default score. Those items are handled as hard gates / tie-breakers outside the triangle.
 
-There is no universal weight set.
+The detailed route, price, and configuration sub-scores must add up to the same `50 / 30 / 20` total used by `docs/vps-selection.md`.
 
-The final recommendation should tell the user:
+For other workloads, weights may change. Examples:
+
+```text
+gaming              -> increase route / RTT / jitter weight
+streaming            -> emphasize sustained throughput inside route score
+app/database server  -> increase configuration weight
+backup node          -> increase price weight
+```
+
+The final recommendation must explain:
 
 ```text
 why candidate A ranks first
 what candidate A sacrifices
-why candidate B may be better for a different priority
+why candidate B may suit a different priority
 which triangle corner each candidate optimizes
-which result is based on marketing and which is based on real measurement
+which claims are marketing
+which results are actually measured
 ```
 
-The procurement goal is **not** “find the biggest plan”. It is:
+The goal is not “find the biggest plan”. It is to find the best personal balance among route, price, and configuration.
 
-> **find the best personal optimum among price, configuration and route quality for this user's actual workload and local network.**
+### 3.11 Human purchase boundary
 
-### 3.14 Human purchase boundary
+The AI should do the comparison, research, interpretation, and any executable testing it can do. The human should only handle steps that genuinely require human consent or access, such as final payment, MFA/CAPTCHA, accepting provider terms, or local actions the AI cannot access.
 
-The agent should guide comparison, testing and checkout interpretation, but the human should make the final purchase decision.
+Do not ask the user to paste payment-card data, provider passwords, or other financial/account secrets into prompts, logs, Issues, or the repository.
 
-Do not ask the user to paste payment-card data, provider passwords or other financial/account secrets into prompts, logs, Issues or the repository.
+After purchase, re-test the **real assigned VPS**. Provider Test IP performance does not prove every production instance is identical.
 
-After purchase, re-test the **real assigned VPS**, because provider Test IP performance does not prove every production instance is identical.
-
-Only after the instance passes procurement acceptance should the deployment flow continue to SSH bootstrap.
+Only after the instance passes procurement acceptance should deployment continue to SSH bootstrap.
 
 ---
 
 ## 4. Human SSH bootstrap boundary
 
-An AI must not assume it can safely operate a fresh VPS merely because the user knows its IP/password.
-
-Before autonomous or semi-autonomous deployment, require a one-time human bootstrap unless secure key-based access already exists.
+Before autonomous or semi-autonomous deployment, establish secure key-based access unless an equally secure path already exists.
 
 Recommended flow:
 
 ```text
-Human logs in once using provider password / console
+Human logs in once using provider password / console when necessary
         ↓
-Human generates SSH key pair locally
+Generate SSH key pair locally if none exists
         ↓
 Only the public key is installed on the VPS
         ↓
-Human verifies key-based SSH login
+Verify key-based SSH login
         ↓
 Local AI/Agent uses the already-working ssh / SSH agent / SSH config
 ```
+
+If the AI has authorized local-shell access, it should generate/install/test the key itself where possible without exposing private-key content. If a provider password, MFA, or console interaction must be performed by the human, guide that step explicitly.
 
 Rules:
 
 1. SSH private keys remain on the user's local device.
 2. Only the `.pub` key goes to `authorized_keys`.
 3. Never ask the user to paste a root password or private key into chat, GitHub, Issues, logs, or prompts.
-4. Prefer invoking the user's existing local `ssh`, SSH Agent, or `~/.ssh/config` over reading/exporting private keys.
+4. Prefer the user's existing `ssh`, SSH Agent, or `~/.ssh/config` over reading/exporting private keys.
 5. Do not disable password login until key-based login is proven to work.
 6. Preserve provider-console recovery where possible.
-7. If secure SSH access cannot be established, stop and ask the human to complete bootstrap.
+7. If secure SSH access cannot be established, stop and guide the human through the minimum required bootstrap.
 
-Windows example:
+Windows manual fallback example:
 
 ```powershell
 ssh-keygen -t ed25519
@@ -646,13 +577,13 @@ Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@SERVER_IP "umask 077
 ssh root@SERVER_IP
 ```
 
-The final `ssh` must succeed before unattended changes continue.
+The final `ssh` must succeed before unattended server changes continue.
 
 ---
 
 ## 5. Resource contract
 
-Distinguish **required for the selected profile** from **optional enhancements**.
+Distinguish **required for the selected profile** from optional enhancements.
 
 ### Required for HY2 baseline
 
@@ -665,7 +596,7 @@ Distinguish **required for the selected profile** from **optional enhancements**
 - HY2 password/auth material;
 - TLS material accepted by the HY2 client;
 - normal VPS outbound Internet access;
-- verified SSH key-based administration path before AI-controlled deployment, unless an equally secure path already exists.
+- verified SSH key-based administration before AI-controlled deployment, unless an equally secure path already exists.
 
 Resolve first:
 
@@ -726,17 +657,7 @@ appropriate domain / tunnel configuration
 secret/token handling path
 ```
 
-### Not universally required
-
-Do not require these merely to run the project:
-
-- residential IP;
-- fixed SOCKS5;
-- WARP;
-- REALITY;
-- Cloudflare Tunnel;
-- second VPS;
-- IPv6.
+Do not require WARP, fixed SOCKS5, REALITY, Cloudflare Tunnel, a second VPS, residential IP, or IPv6 merely because examples exist.
 
 ---
 
@@ -752,10 +673,6 @@ Claude / Anthropic               -> optional fixed SOCKS5
 ```
 
 Treat this as a maintainer preference / example policy, not a universal service requirement.
-
-Use wording such as:
-
-> Some services may behave differently across regions or data-center IP ranges. A separate explicitly selected egress can make routing, troubleshooting, and egress stability more predictable.
 
 Avoid unsupported claims such as:
 
@@ -786,27 +703,18 @@ Why:
 - keeps SSH/system updates on native route;
 - prevents fixed SOCKS upstream connections from accidentally traversing WARP;
 - keeps Direct as a clean baseline;
-- limits WARP failure impact to the routes that explicitly use it.
+- limits WARP failure impact to explicitly selected routes.
 
 Official references:
 
 - <https://developers.cloudflare.com/warp-client/get-started/linux/>
 - <https://developers.cloudflare.com/warp-client/warp-modes/>
 
-Cloudflare CLI syntax changes. Always prefer current docs plus local `warp-cli --help` over historical commands.
+Cloudflare CLI syntax changes. Prefer current docs plus local `warp-cli --help` over historical commands.
 
-### Watchdog policy
+For WARP health, test real requests through the local proxy. A live `warp-svc` process alone is not evidence of healthy egress.
 
-Two separate concerns:
-
-```text
-Xray lifecycle             -> systemd service
-WARP real-egress health    -> connectivity watchdog
-```
-
-For WARP health, test real requests through the local proxy. A live `warp-svc` process is not sufficient evidence.
-
-Prefer a systemd timer for new/public deployments. Cron may be mentioned only as a historical/simple alternative.
+Prefer a systemd timer for new/public watchdog deployments. Cron may be mentioned as a historical/simple alternative.
 
 ---
 
@@ -851,7 +759,7 @@ GUI metadata + global preferences
 core-specific runtime config
 ```
 
-Keep sing-box, Xray and Mihomo field names separate.
+Keep sing-box, Xray, and Mihomo field names separate.
 
 ---
 
@@ -897,7 +805,8 @@ docs/static-socks.md                   fixed SOCKS5 egress behavior
 
 Synchronization rules:
 
-- VPS procurement/selection/testing guidance change -> VPS selection doc + relevant README entry points + AGENTS procurement contract.
+- VPS procurement/scoring/testing guidance change -> `docs/vps-selection.md` + relevant README entry points + AGENTS procurement contract.
+- The default daily HY2/AI triangle score must remain `route 50 / price 30 / config 20` in both AGENTS and `docs/vps-selection.md`.
 - Xray schema change -> server example + README references + affected docs + AGENTS.
 - HY2 client field change -> HY2 client example + relevant README notes.
 - REALITY client field change -> REALITY example + relevant README notes.
@@ -982,7 +891,7 @@ TCP 443     REALITY
 UDP 24443   HY2
 ```
 
-A HY2 + WARP + fixed-SOCKS Profile D does not need REALITY TCP 443 unless REALITY is actually enabled.
+An HY2 + WARP + fixed-SOCKS Profile D does not need REALITY TCP 443 unless REALITY is actually enabled.
 
 Preserve SSH access before firewall changes. Remember provider-side security groups may exist independently of host firewall.
 
@@ -992,7 +901,7 @@ Preserve SSH access before firewall changes. Remember provider-side security gro
 
 Change one variable at a time.
 
-Before buying a VPS, follow [`docs/vps-selection.md`](./docs/vps-selection.md): do not infer route quality, UDP health or peak-hour performance from marketing specs alone.
+Before buying a VPS, follow [`docs/vps-selection.md`](./docs/vps-selection.md): do not infer route quality, UDP health, or peak-hour performance from marketing specs alone.
 
 Prefer checking:
 
@@ -1029,6 +938,6 @@ Do not claim end-to-end client success unless the client path was actually teste
 
 `README.md` is for Chinese-speaking humans: explain the practical recommendation first.
 
-`AGENTS.md` is for AI maintainers/deployers: preserve procurement guidance, architecture, profile semantics, SSH bootstrap boundary, resource prerequisites, safety boundaries, source-of-truth links and secret hygiene.
+`AGENTS.md` is for AI maintainers/deployers: preserve procurement guidance, minimal-human-work execution policy, architecture, profile semantics, SSH bootstrap boundary, resource prerequisites, safety boundaries, source-of-truth links, and secret hygiene.
 
 The repository must remain understandable without private production context.
