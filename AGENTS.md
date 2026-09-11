@@ -128,7 +128,248 @@ Do not overbuild simply because example files exist.
 
 ---
 
-## 3. Human SSH bootstrap boundary
+## 3. VPS procurement guidance — guide the human before deployment
+
+If the user has **not bought a VPS yet**, do not jump directly to installation commands.
+
+First read and follow:
+
+- [`docs/vps-selection.md`](./docs/vps-selection.md)
+
+The agent's job is to help the human make a procurement decision, not merely repeat VPS marketing specs.
+
+### 3.1 Use the project's “impossible triangle” as the selection model
+
+Treat VPS selection as a balance between:
+
+```text
+                 route / speed
+        latency · loss · peak hour
+          UDP · stable throughput
+                       ▲
+                      / \
+                     /   \
+                    /     \
+             config ─────── price
+       CPU/RAM/disk/traffic  real long-term cost
+```
+
+This is not a literal mathematical impossibility. It is a decision framework:
+
+> **Ask the user which corner matters most, set minimum acceptable thresholds for all three, then search for the best balance inside the budget.**
+
+Do not assume that a larger CPU/RAM package is better for a personal relay. Once the workload has crossed its practical minimum, better routing and stability may be more valuable than unused compute.
+
+### 3.2 Gather procurement requirements before recommending vendors
+
+At minimum, resolve:
+
+```text
+USER_REGION
+LOCAL_ISP / carrier
+PRIMARY_NETWORK_TYPE   home broadband / campus / mobile / office
+MONTHLY_BUDGET
+PRICE_PRIORITY
+ROUTE_PRIORITY
+CONFIG_PRIORITY
+TARGET_VPS_REGIONS
+PUBLIC_IPV4_REQUIRED
+UDP_REQUIRED
+MIN_MONTHLY_TRAFFIC
+MIN_PORT_BANDWIDTH
+INTENDED_WORKLOAD
+FIRST_PURCHASE_TERM     monthly preferred for untested vendors
+```
+
+Also ask whether the machine is only a relay or will additionally host databases, websites, containers, builds or other services. That determines how much weight configuration deserves.
+
+### 3.3 For users in mainland China, explain route labels instead of blindly ranking them
+
+Use these as **reference labels only**:
+
+```text
+China Telecom
+  ordinary: ChinaNet / 163 / commonly AS4134
+  higher-quality candidate: CN2 / AS4809; marketing may say CN2 GIA
+
+China Unicom
+  ordinary: 169 / commonly AS4837
+  higher-quality candidate: AS9929 + AS10099 / CUP / China Unicom Premium
+
+China Mobile
+  ordinary international: CMI / commonly AS58453
+  higher-quality candidate: CMIN2 / AS58807
+```
+
+For Japan and other overseas segments, names such as:
+
+```text
+SoftBank / AS17676
+IIJ / AS2497
+NTT / AS2914
+```
+
+usually describe an overseas backbone/transit segment. They are **not the same category** as CN2 / 9929 / CMIN2. A single end-to-end path may contain both.
+
+Never tell the user that a label alone proves quality. “CN2”, “9929”, “CMIN2”, “SoftBank”, “IIJ”, “NTT”, “three-network optimized”, “premium network”, “native IP”, and similar phrases are shortlist clues, not evidence.
+
+### 3.4 Search and shortlist like a procurement assistant
+
+When current vendor inventory, prices or promotions matter, use fresh public information rather than memory.
+
+For each candidate collect:
+
+1. provider and exact plan;
+2. datacenter city / region;
+3. actual checkout price;
+4. renewal price;
+5. IPv4, location, setup, tax and other mandatory fees;
+6. CPU / RAM / disk;
+7. port bandwidth and monthly traffic;
+8. public IPv4 / NAT status;
+9. UDP policy;
+10. AUP / ToS compatibility with the user's intended personal use;
+11. test IP / Looking Glass;
+12. reinstall / console / recovery capabilities;
+13. refund / cancellation / IP replacement rules;
+14. current discount type and whether it recurs.
+
+Prefer a shortlist of roughly 5–10 candidates first, then reduce to 2–3 after hard requirements and route tests.
+
+### 3.5 Treat discounts as a useful price lever, not as proof that a server is worth buying
+
+Compare **effective long-term monthly cost**, not only the largest promotional number:
+
+```text
+plan
++ IPv4
++ location surcharge
++ setup fee
++ taxes / mandatory add-ons
+------------------------------
+actual paid term
+```
+
+Explicitly distinguish:
+
+- first-month discount;
+- first-term / first-year discount;
+- recurring discount;
+- coupon code;
+- anniversary / seasonal / Black Friday-style promotion;
+- normal renewal price.
+
+A good recurring discount can improve the price corner of the triangle without sacrificing route/configuration.
+
+However, for an untested provider or route:
+
+```text
+monthly test first
+      ↓
+validate route + instance
+      ↓
+then consider annual / long-term discount
+```
+
+Do not encourage the user to lock into a long prepaid term merely because the advertised annual price is low.
+
+### 3.6 Guide the human through route testing before purchase
+
+When a Test IP / Looking Glass exists, instruct the user to test from the network they will actually use.
+
+Typical Windows checks:
+
+```powershell
+ping TEST_IP -n 50
+tracert -d TEST_IP
+pathping TEST_IP
+```
+
+Typical Linux/macOS checks:
+
+```bash
+ping -c 50 TEST_IP
+mtr -rwzbc 50 TEST_IP
+```
+
+At minimum compare:
+
+```text
+daytime
+20:00–23:00 local peak hours
+```
+
+Evaluate:
+
+- terminal packet loss;
+- median / average / P95 latency where available;
+- jitter / max spikes;
+- route changes;
+- repeated timeouts;
+- sustained throughput;
+- the user's own ISP specifically.
+
+Do not treat an intermediate traceroute hop that ignores/deprioritizes ICMP as automatic end-to-end loss.
+
+Where possible, examine both directions. Internet routing can be asymmetric; a good outbound traceroute from the user's device does not prove the return path is equally good.
+
+### 3.7 HY2 candidates require explicit UDP validation
+
+Do not infer UDP health from TCP/HTTPS success.
+
+For a purchased test instance, validate the actual intended UDP port. If useful, compare common and high ports, for example:
+
+```text
+UDP 443
+UDP 24443
+```
+
+If one reaches the VPS and the other does not, investigate path/port-specific handling before blaming HY2 itself.
+
+QUIC/HY2 does not require UDP 443 specifically. Use the port that is actually reachable and stable for the user's path.
+
+### 3.8 Score candidates according to the user's triangle, then explain the trade-off
+
+For a daily HY2 / AI relay, a reasonable example is:
+
+```text
+route / stability  50%
+price              25%
+configuration      15%
+operations / AUP   10%
+```
+
+For a combined application/database server, configuration may deserve equal weight with routing. For a backup node, price may deserve more weight.
+
+There is no universal weight set.
+
+The final recommendation should tell the user:
+
+```text
+why candidate A ranks first
+what candidate A sacrifices
+why candidate B may be better for a different priority
+which triangle corner each candidate optimizes
+which result is based on marketing and which is based on real measurement
+```
+
+The procurement goal is **not** “find the biggest plan”. It is:
+
+> **find the best personal optimum among price, configuration and route quality for this user's actual workload and local network.**
+
+### 3.9 Human purchase boundary
+
+The agent should guide comparison, testing and checkout interpretation, but the human should make the final purchase decision.
+
+Do not ask the user to paste payment-card data, provider passwords or other financial/account secrets into prompts, logs, Issues or the repository.
+
+After purchase, re-test the **real assigned VPS**, because provider Test IP performance does not prove every production instance is identical.
+
+Only after the instance passes procurement acceptance should the deployment flow continue to SSH bootstrap.
+
+---
+
+## 4. Human SSH bootstrap boundary
 
 An AI must not assume it can safely operate a fresh VPS merely because the user knows its IP/password.
 
@@ -170,7 +411,7 @@ The final `ssh` must succeed before unattended changes continue.
 
 ---
 
-## 4. Resource contract
+## 5. Resource contract
 
 Distinguish **required for the selected profile** from **optional enhancements**.
 
@@ -260,7 +501,7 @@ Do not require these merely to run the project:
 
 ---
 
-## 5. Routing policy semantics
+## 6. Routing policy semantics
 
 Repository example policy may use:
 
@@ -286,7 +527,7 @@ Avoid unsupported claims such as:
 
 ---
 
-## 6. WARP architecture rule
+## 7. WARP architecture rule
 
 Prefer **WARP Local Proxy / WarpProxy mode**:
 
@@ -330,7 +571,7 @@ Prefer a systemd timer for new/public deployments. Cron may be mentioned only as
 
 ---
 
-## 7. Fixed SOCKS5 boundary
+## 8. Fixed SOCKS5 boundary
 
 SOCKS5 itself does not provide transport encryption.
 
@@ -348,7 +589,7 @@ Do not silently reroute fixed-egress traffic to Direct when the upstream fails.
 
 ---
 
-## 8. Audited client reality
+## 9. Audited client reality
 
 Current Windows audit:
 
@@ -375,7 +616,7 @@ Keep sing-box, Xray and Mihomo field names separate.
 
 ---
 
-## 9. Xray source of truth
+## 10. Xray source of truth
 
 Prefer current official Xray docs over copied blog configs or remembered production aliases:
 
@@ -401,23 +642,23 @@ If upstream schema changes, update every affected example/doc together.
 
 ---
 
-## 10. Repository file map
+## 11. Repository file map
 
 ```text
 README.md                              Chinese human-facing architecture and profile guidance
-AGENTS.md                              AI deployment/maintenance contract
+AGENTS.md                              AI procurement/deployment/maintenance contract
 examples/xray-server.example.jsonc     server-side Xray schema example
 examples/v2rayn-hysteria2.example.md   audited v2rayN / sing-box HY2 client example
 examples/v2rayn-reality-vision.example.md
                                        v2rayN / Xray REALITY client example
-docs/vps-selection.md                  pre-deployment VPS screening, route and UDP testing guide
+docs/vps-selection.md                  pre-deployment VPS procurement, route and UDP testing guide
 docs/warp-outbound.md                  WARP egress behavior and validation
 docs/static-socks.md                   fixed SOCKS5 egress behavior
 ```
 
 Synchronization rules:
 
-- VPS selection/testing guidance change -> VPS selection doc + relevant README entry points + AGENTS if deployer assumptions change.
+- VPS procurement/selection/testing guidance change -> VPS selection doc + relevant README entry points + AGENTS procurement contract.
 - Xray schema change -> server example + README references + affected docs + AGENTS.
 - HY2 client field change -> HY2 client example + relevant README notes.
 - REALITY client field change -> REALITY example + relevant README notes.
@@ -428,7 +669,7 @@ Never leave contradictory assumptions across files.
 
 ---
 
-## 11. Production host is not the template
+## 12. Production host is not the template
 
 Production evolved through experiments and may contain legacy paths/backups/compatibility fields.
 
@@ -458,7 +699,7 @@ minimal configs
 
 ---
 
-## 12. Secret handling
+## 13. Secret handling
 
 Never commit or paste live secrets.
 
@@ -490,7 +731,7 @@ Never expose:
 
 ---
 
-## 13. Firewall / listeners
+## 14. Firewall / listeners
 
 Open only selected-feature ports.
 
@@ -508,7 +749,7 @@ Preserve SSH access before firewall changes. Remember provider-side security gro
 
 ---
 
-## 14. Testing philosophy
+## 15. Testing philosophy
 
 Change one variable at a time.
 
@@ -545,10 +786,10 @@ Do not claim end-to-end client success unless the client path was actually teste
 
 ---
 
-## 15. Documentation style
+## 16. Documentation style
 
 `README.md` is for Chinese-speaking humans: explain the practical recommendation first.
 
-`AGENTS.md` is for AI maintainers/deployers: preserve architecture, profile semantics, SSH bootstrap boundary, resource prerequisites, safety boundaries, source-of-truth links and secret hygiene.
+`AGENTS.md` is for AI maintainers/deployers: preserve procurement guidance, architecture, profile semantics, SSH bootstrap boundary, resource prerequisites, safety boundaries, source-of-truth links and secret hygiene.
 
 The repository must remain understandable without private production context.
