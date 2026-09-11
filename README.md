@@ -4,6 +4,30 @@
 
 [给 AI / Agent 的维护与部署说明 → `AGENTS.md`](./AGENTS.md)
 
+## 从这里开始
+
+如果你是从零开始，可以按这个顺序看：
+
+```text
+还没买 VPS
+  ↓
+docs/vps-selection.md
+  ↓
+配置并验证 SSH 公钥
+  ↓
+先部署最小 HY2
+  ↓
+按需要增加 WARP / Fixed SOCKS5
+  ↓
+UDP 环境确实不稳定时再补 REALITY
+```
+
+- **还没买 VPS** → [`docs/vps-selection.md`](./docs/vps-selection.md)：怎么筛厂商、测线路、看晚高峰、验证 UDP，以及中国内地云服务器应该怎么理解。
+- **已经有 VPS** → 从下面的 SSH 引导和部署顺序开始。
+- **主要用于 AI** → 优先看本文的 C / D 档，再读 [`docs/warp-outbound.md`](./docs/warp-outbound.md) 和 [`docs/static-socks.md`](./docs/static-socks.md)。
+
+---
+
 ## 先说结论：我自己怎么选
 
 如果只是想“能用”，一条 HY2 就够。
@@ -281,6 +305,8 @@ tracert -d TEST_IP
 
 稳定的 200 Mbps 往往比晚高峰严重丢包的“共享 1 Gbps”更实用。
 
+完整的选机、线路测试、UDP/443 对照测试和中国内地云服务器说明见：[`docs/vps-selection.md`](./docs/vps-selection.md)。
+
 ---
 
 # 4. 端口布局
@@ -294,6 +320,8 @@ UDP 24443   HY2
 ```
 
 只部署 HY2 时，不需要因为仓库里有 REALITY 示例就额外开放 TCP 443。
+
+`UDP 24443` 是现网实测后选择的端口，不代表 HY2 必须使用它。若你的线路 `UDP 443` 稳定，也可以使用 `UDP 443`；端口应以实际可达性为准。
 
 ---
 
@@ -372,7 +400,7 @@ YOUR_SOCKS_PASSWORD
 如果主要目的是稳定使用 AI，我建议：
 
 ```text
-1. 测 VPS 线路
+1. 按 docs/vps-selection.md 筛 VPS、测线路和 UDP
 2. 人类首次 SSH 登录，配置并验证 SSH 公钥
 3. AI / Agent 接手后续 SSH 施工
 4. 部署 HY2 并完成客户端验证
@@ -382,7 +410,7 @@ YOUR_SOCKS_PASSWORD
 8. 需要更多入口冗余时再考虑 Cloudflare Tunnel
 ```
 
-这和“先装全家桶”不同：**优先把对日常体验最有价值的出口层做对，再按真实网络问题增加备用入口。**
+这和“先装全家桶”不同：**优先把对日常体验最有价值的入口线路和出口层做对，再按真实网络问题增加备用入口。**
 
 ---
 
@@ -399,6 +427,7 @@ personal-edge-proxy/
 │   ├── v2rayn-hysteria2.example.md
 │   └── v2rayn-reality-vision.example.md
 └── docs/
+    ├── vps-selection.md
     ├── warp-outbound.md
     └── static-socks.md
 ```
