@@ -1,0 +1,28 @@
+[Unit]
+Description=edge_sub — token-protected subscription reverse proxy
+Documentation=local
+After=network-online.target subconverter.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/edge-sub
+ExecStart=/usr/bin/python3 /opt/edge-sub/edge_sub.py
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+
+# 只放行本机读 token/uri 文件;其它收紧
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/edge-sub /etc/edge
+
+# 环境变量(若想覆盖可放 /etc/default/edge-sub)
+Environment=EDGE_SUB_HOST=0.0.0.0
+Environment=EDGE_SUB_PORT=18080
+
+[Install]
+WantedBy=multi-user.target

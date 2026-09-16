@@ -1,0 +1,7 @@
+[Unit]
+Description=Cloudflare WARP Local Proxy Health Watchdog
+After=network.target warp-svc.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/warp-watchdog.sh
