@@ -156,6 +156,13 @@ proxy-groups:
 {proxies_list}
 
 rules:
+  # AI 流量 UDP 443 客户端即时拦截 (0ms Fail-Fast 降级至 TCP HTTP/2，杜绝 QUIC 绕过 WARP 导致机房裸 IP 泄露)
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-KEYWORD,openai)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-KEYWORD,chatgpt)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-KEYWORD,anthropic)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-KEYWORD,claude)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,gemini.google.com)),REJECT
+  - AND,((NETWORK,UDP),(DST-PORT,443),(DOMAIN-SUFFIX,aistudio.google.com)),REJECT
   - GEOIP,private,DIRECT,no-resolve
   - GEOIP,CN,DIRECT
   - MATCH,PROXY

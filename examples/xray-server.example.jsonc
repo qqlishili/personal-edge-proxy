@@ -54,7 +54,8 @@
           "tls",
           "quic"
         ],
-        "metadataOnly": false
+        "metadataOnly": false,
+        "routeOnly": true
       }
     },
 
@@ -98,7 +99,8 @@
           "tls",
           "quic"
         ],
-        "metadataOnly": false
+        "metadataOnly": false,
+        "routeOnly": true
       }
     }
   ],
@@ -199,6 +201,32 @@
         ],
         "network": "tcp",
         "outboundTag": "warp-official"
+      },
+
+      {
+        // 关键防御：WARP SOCKS5 不支持 UDP Associate。
+        // 阻断 AI 域名的 UDP 443 (QUIC)，促使浏览器无缝降级为 TCP (HTTP/2)，
+        // 确保所有 AI 流量 100% 走 WARP，彻底杜绝数据中心裸 IP 泄露。
+        "type": "field",
+        "inboundTag": [
+          "hy2-xr",
+          "reality-vision"
+        ],
+        "domain": [
+          "domain:openai.com",
+          "domain:chatgpt.com",
+          "domain:oaistatic.com",
+          "domain:oaiusercontent.com",
+          "domain:gemini.google.com",
+          "domain:aistudio.google.com",
+          "domain:generativelanguage.googleapis.com",
+          "domain:anthropic.com",
+          "domain:claude.ai",
+          "domain:claude.site",
+          "domain:anthropicusercontent.com"
+        ],
+        "network": "udp",
+        "outboundTag": "block"
       }
     ]
   }
