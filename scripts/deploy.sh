@@ -24,4 +24,16 @@ cp systemd/warp-watchdog.service /etc/systemd/system/warp-watchdog.service
 cp systemd/warp-watchdog.timer /etc/systemd/system/warp-watchdog.timer
 
 systemctl daemon-reload
+
+echo "=== Ensuring keys and rendering Xray config ==="
+/opt/edge-reality/gen_keys.sh
+/opt/edge-reality/render_config.py
+
+echo "=== Testing Xray configuration ==="
+/usr/local/bin/xray -test -config /usr/local/etc/xray/config.json
+
+echo "=== Restarting services ==="
+systemctl restart xray
+systemctl restart edge-sub
+
 echo "=== Deployment completed successfully ==="

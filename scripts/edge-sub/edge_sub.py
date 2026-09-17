@@ -19,17 +19,23 @@ def _lt():
             _a = f.read().strip()
     return _a
 
+ENABLED_NODES = [
+    ("ss2022", "/etc/edge/ss2022_uri"),
+    ("reality", "/etc/edge/reality_uri"),
+    ("hy2", "/etc/edge/hy2_uri"),
+]
+
 def _get_uris() -> list[str]:
     uris = []
-    for path in ["/etc/edge/hy2_uri", "/etc/edge/reality_uri"]:
-        if os.path.exists(path):
+    for tag, p in ENABLED_NODES:
+        if os.path.exists(p):
             try:
-                with open(path) as f:
+                with open(p) as f:
                     u = f.read().strip()
                     if u:
                         uris.append(u)
-            except Exception:
-                pass
+            except Exception as e:
+                sys.stderr.write(f"[edge_sub] failed to read {p}: {e}\n")
     return uris
 
 def _ct(p):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mihomo.yaml 生成器: 从 hysteria2 / vless REALITY URI 输出 mihomo/Clash.Meta 配置。
+mihomo.yaml 生成器: 从 hysteria2 / vless REALITY / shadowsocks-2022 URI 输出 mihomo/Clash.Meta 配置。
 
 用法:
     mihomo.py <URI1> [URI2 ...] > out.yaml
@@ -17,14 +17,12 @@ def parse_hysteria2(uri: str) -> dict:
         s = s[len("hysteria2://"):]
     elif s.startswith("hy2://"):
         s = s[len("hy2://"):]
-    # split fragment / query
     frag = ""
     if "#" in s:
         s, frag = s.split("#", 1)
     q = ""
     if "?" in s:
         s, q = s.split("?", 1)
-    # userinfo@host:port
     m = re.match(r"^([^@]*)@([^:]+):(\d+)$", s)
     if not m:
         raise ValueError("URI bad shape (userinfo@host:port): " + s)
@@ -70,6 +68,52 @@ def parse_vless(uri: str) -> dict:
         "type": "vless",
         "name": name, "host": host, "port": port,
         "uuid": uuid, "flow": flow, "sni": sni, "pbk": pbk, "sid": sid, "fp": fp,
+    }
+
+
+def parse_shadowsocks(uri: str) -> dict:
+    if not uri.startswith("ss://"):
+        raise ValueError("not a shadowsocks URI: " + uri[:40])
+    s = uri[len("ss://"):]
+    frag = ""
+    if "#" in s:
+        s, frag = s.split("#", 1)
+    name = up.unquote(frag) or "shadowsocks"
+    if "@" in s:
+        userinfo_part, host_port_part = s.split("@", 1)
+        try:
+            pad = len(userinfo_part) % 4
+            b64_str = userinfo_part + ("=" * ((4 - pad) % 4))
+            decoded = base64.urlsafe_b64decode(b64_str).decode("utf-8")
+            if ":" in decoded:
+                method, password = decoded.split(":", 1)
+            else:
+                method, password = "", decoded
+        except Exception:
+            if ":" in userinfo_part:
+                method, password = userinfo_part.split(":", 1)
+            else:
+                method, password = "", userinfo_part
+        m = re.match(r"^([^:]+):(\d+)$", host_port_part)
+        if not m:
+            raise ValueError(f"invalid host:port in ss URI: {host_port_part}")
+        host, port = m.group(1), int(m.group(2))
+    else:
+        pad = len(s) % 4
+        b64_str = s + ("=" * ((4 - pad) % 4))
+        decoded = base64.urlsafe_b64decode(b64_str).decode("utf-8")
+        userinfo, host_port = decoded.split("@", 1)
+        method, password = userinfo.split(":", 1)
+        host, port = host_port.split(":", 1)
+        port = int(port)
+    return {
+        "type": "ss",
+        "name": name,
+        "host": host,
+        "port": port,
+        "cipher": method,
+        "password": password,
+        "udp": True,
     }
 
 
@@ -125,6 +169,17 @@ def build_yaml(nodes: list[dict]) -> str:
                 f"      public-key: {p['pbk']}",
                 f"      short-id: {p['sid']}",
                 f"    client-fingerprint: {p['fp']}",
+            ]
+            node_blocks.append(chr(10).join(lines))
+        elif p["type"] == "ss":
+            lines = [
+                f"  - name: {name}",
+                f"    type: ss",
+                f"    server: {host}",
+                f"    port: {port}",
+                f"    cipher: {yaml_escape(p['cipher'])}",
+                f"    password: {yaml_escape(p['password'])}",
+                f"    udp: true",
             ]
             node_blocks.append(chr(10).join(lines))
 
@@ -183,6 +238,8 @@ def main():
             nodes.append(parse_hysteria2(u))
         elif u.startswith("vless://"):
             nodes.append(parse_vless(u))
+        elif u.startswith("ss://"):
+            nodes.append(parse_shadowsocks(u))
         else:
             sys.stderr.write(f"Warning: unknown URI scheme: {u[:30]}\n")
     if not nodes:
