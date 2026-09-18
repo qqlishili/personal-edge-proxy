@@ -247,7 +247,20 @@ def main():
     # 3. 注入 inbounds (四路矩阵)
     c.execute("DELETE FROM inbounds")
 
-    # 方案 B-1: VLESS-Reality-TCP (客户端必须置空 flow)
+    # 方案 A: Shadowsocks-2022 (绝对主力 - 0-RTT 无双重 TLS 惩罚，首选排序 id=2)
+    ss2022_name = "🇺🇸 美国-洛杉矶-SS-2022 [中转主力]"
+    ss2022_opts = {
+        "network": "tcp,udp",
+        "method": "2022-blake3-aes-128-gcm",
+        "password": SS_KEY
+    }
+    ss2022_out = {"tag": ss2022_name, "type": "shadowsocks", "server": "<LANDING_IP>", "server_port": 2083, "method": "2022-blake3-aes-128-gcm"}
+    c.execute("INSERT INTO inbounds (id, tag, protocol, listen, port, options, addrs, out_json) VALUES "
+              "(2, 'ss2022-in', 'shadowsocks', '::', 2083, ?, ?, ?)",
+              (to_blob(ss2022_opts), to_blob([]), to_blob(ss2022_out)))
+
+    # 方案 B-1: VLESS-Reality-TCP (次选拟态 - 置空 flow，排序 id=3)
+    reality_name = "🇺🇸 美国-洛杉矶-REALITY [中转伪装]"
     reality_tcp_opts = {
         "users": [{"name": "personal", "uuid": USER_UUID, "flow": ""}],
         "tls": {
@@ -261,19 +274,14 @@ def main():
             }
         }
     }
-    c.execute("INSERT INTO inbounds (id, tag, protocol, listen, port, options, addrs, out_json) VALUES "
-              "(2, 'reality-in', 'vless', '::', 2053, ?, ?, ?)",
-              (to_blob(reality_tcp_opts), to_blob([]), to_blob({})))
-
-    # 方案 A: Shadowsocks-2022 (绝对主力)
-    ss2022_opts = {
-        "network": "tcp,udp",
-        "method": "2022-blake3-aes-128-gcm",
-        "password": SS_KEY
+    reality_out = {
+        "tag": reality_name, "type": "vless", "server": "<LANDING_IP>", "server_port": 2053,
+        "tls": {"enabled": True, "server_name": FALLBACK_SNI, "reality": {"enabled": True, "public_key": REALITY_PUBLIC_KEY, "short_id": REALITY_SHORT_ID}},
+        "utls": {"enabled": True, "fingerprint": "chrome"}
     }
     c.execute("INSERT INTO inbounds (id, tag, protocol, listen, port, options, addrs, out_json) VALUES "
-              "(3, 'ss2022-in', 'shadowsocks', '::', 2083, ?, ?, ?)",
-              (to_blob(ss2022_opts), to_blob([]), to_blob({})))
+              "(3, 'reality-in', 'vless', '::', 2053, ?, ?, ?)",
+              (to_blob(reality_tcp_opts), to_blob([]), to_blob(reality_out)))
 
     # 方案 B-2: VLESS-Reality-gRPC (应急备用)
     reality_grpc_opts = {
@@ -327,7 +335,7 @@ if __name__ == "__main__":
 ```yaml
 # providers/vps.yaml (由本地离线配置生成，杜绝公网明文拉取)
 proxies:
-  - name: US-LA-ss2022-in
+  - name: "🇺🇸 美国-洛杉矶-SS-2022 [中转主力]"
     type: ss
     server: <LANDING_IP>
     port: 2083
@@ -335,7 +343,7 @@ proxies:
     password: <YOUR_SS2022_KEY>
     dialer-proxy: 前置选择 # 核心绑定：第一跳走中转跳板
 
-  - name: US-LA-reality-in
+  - name: "🇺🇸 美国-洛杉矶-REALITY [中转伪装]"
     type: vless
     server: <LANDING_IP>
     port: 2053
@@ -349,7 +357,7 @@ proxies:
     client-fingerprint: chrome
     dialer-proxy: 前置选择
 
-  - name: US-LA-reality-grpc-in
+  - name: "🇺🇸 美国-洛杉矶-REALITY-gRPC [并发复用]"
     type: vless
     server: <LANDING_IP>
     port: 2054
@@ -365,7 +373,7 @@ proxies:
     client-fingerprint: chrome
     dialer-proxy: 前置选择
 
-  - name: US-LA-vless-ws-in
+  - name: "🇺🇸 美国-洛杉矶-WS-CDN [应急避难]"
     type: vless
     server: <YOUR_DOMAIN>
     port: 8443
