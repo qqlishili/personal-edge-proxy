@@ -25,6 +25,7 @@ UDP 环境确实不稳定时再补 REALITY
 - **还没买 VPS** → [`docs/vps-selection.md`](./docs/vps-selection.md)：怎么筛厂商、测线路、看晚高峰、验证 UDP，以及中国内地云服务器应该怎么理解。
 - **已经有 VPS** → 从下面的 SSH 引导和部署顺序开始。
 - **主要用于 AI** → 优先看本文的 C / D 档，再读 [`docs/warp-outbound.md`](./docs/warp-outbound.md) 和 [`docs/static-socks.md`](./docs/static-socks.md)。
+- **无法直连落地机 / 链式中转矩阵** → [`docs/s-ui-transit-matrix-deployment.md`](./docs/s-ui-transit-matrix-deployment.md)：专用于客户端无法直连落地机、微型小鸡（128MB~2GB）、基于 `s-ui` 原生三阶中转矩阵（SS-2022 + Reality + WS CDN）与 AI 流量 WARP 出口防护。
 
 ---
 
@@ -429,7 +430,8 @@ personal-edge-proxy/
 └── docs/
     ├── vps-selection.md
     ├── warp-outbound.md
-    └── static-socks.md
+    ├── static-socks.md
+    └── s-ui-transit-matrix-deployment.md
 ```
 
 ---
